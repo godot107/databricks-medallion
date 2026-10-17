@@ -23,6 +23,15 @@ variables:
   max_reject_rate:
     description: Silver quality gate; the run fails above this share of bad rows
     default: "0.05"
+  schedule_cron:
+    description: Quartz cron (sec min hour day-of-month month day-of-week)
+    default: "0 0 6 * * ?"        # 06:00 every day
+  schedule_timezone:
+    default: America/Chicago
+  warehouse_id:
+    description: SQL warehouse the dashboard queries run on
+    lookup:
+      warehouse: Serverless Starter Warehouse   # Free Edition's one warehouse; rename if yours differs
 
 targets:
   # Your sandbox. Development mode prefixes every resource with
@@ -35,5 +44,7 @@ targets:
   # On Free Edition it shares the one workspace with dev; the names keep them apart.
   prod:
     mode: production
+    variables:
+      schedule_cron: "0 0 6 * * ?"   # per-target override example: prod could run hourly with "0 0 * * * ?"
     workspace:
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}

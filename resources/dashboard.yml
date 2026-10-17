@@ -1,0 +1,15 @@
+# AI/BI dashboard over ops.pipeline_runs and the gold view. The layout lives in
+# src/dashboards/medallion_monitor.lv.dashboard.json. Easiest way to change it: edit in
+# the UI, then pull the change back into git with
+#   databricks bundle generate dashboard --resource medallion_monitor --force
+resources:
+  dashboards:
+    medallion_monitor:
+      display_name: Medallion pipeline monitor
+      file_path: ../src/dashboards/medallion_monitor.lv.dashboard.json
+      warehouse_id: ${var.warehouse_id}
+      dataset_catalog: ${var.catalog}
+      dataset_schema: ${resources.schemas.ops.name}
+      # false = each viewer queries as themselves, so gold's row filter applies to them.
+      # true would run every viewer's queries as the publisher and bypass RLS.
+      embed_credentials: false

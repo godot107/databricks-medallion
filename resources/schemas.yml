@@ -1,4 +1,6 @@
-# Unity Catalog layout: one schema per medallion layer, plus a volume for raw files.
+# Unity Catalog layout: one schema per medallion layer, an ops schema, and a volume for raw files.
+# Tags, row filters and the access map are applied by the job's governance task
+# (src/medallion/governance.py), because tables aren't bundle resources.
 # Deploying creates them; `databricks bundle destroy` removes them (and their tables).
 resources:
   schemas:
@@ -13,7 +15,11 @@ resources:
     gold:
       catalog_name: ${var.catalog}
       name: gold
-      comment: Business-ready aggregates (daily trips and revenue per pickup ZIP).
+      comment: Business-ready aggregates (daily trips and revenue per pickup ZIP). Row-filtered by borough.
+    ops:
+      catalog_name: ${var.catalog}
+      name: ops
+      comment: Pipeline run metrics, row-level-security access map and filter functions, dashboard views.
 
   volumes:
     landing:

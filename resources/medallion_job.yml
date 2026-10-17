@@ -1,15 +1,20 @@
-# One job, three tasks: bronze -> silver -> gold. Serverless compute (no cluster
-# config), which is what Free Edition offers and the cheapest option on AWS/Azure too.
+# One job, four PySpark tasks on a cron schedule: bronze -> silver -> gold -> governance.
+# Serverless compute (no cluster config), which is what Free Edition offers.
 resources:
   jobs:
     medallion_daily:
       name: medallion-daily
       tags:
         project: databricks-medallion
+        domain: mobility
       schedule:
-        quartz_cron_expression: "0 0 6 * * ?"   # 06:00 daily
-        timezone_id: America/Chicago
+        quartz_cron_expression: ${var.schedule_cron}
+        timezone_id: ${var.schedule_timezone}
       max_concurrent_runs: 1
+      timeout_seconds: 3600
+      email_notifications:
+        on_failure:
+          - ${workspace.current_user.userName}
 
       environments:
         - environment_key: default
@@ -18,16 +23,22 @@ resources:
             dependencies:
               - ../dist/*.whl
 
+      # Every task gets the same arguments; each entry point uses what it needs.
       tasks:
         - task_key: bronze
           environment_key: default
           python_wheel_task:
             package_name: medallion
             entry_point: bronze
-            parameters:
+            parameters: &params
               - --catalog=${var.catalog}
-              - --schema=${resources.schemas.bronze.name}
+              - --bronze_schema=${resources.schemas.bronze.name}
+              - --silver_schema=${resources.schemas.silver.name}
+              - --gold_schema=${resources.schemas.gold.name}
+              - --ops_schema=${resources.schemas.ops.name}
               - --source_table=${var.source_table}
+              - --max_reject_rate=${var.max_reject_rate}
+              - --run_id={{job.run_id}}
 
         - task_key: silver
           depends_on: [{ task_key: bronze }]
@@ -35,11 +46,7 @@ resources:
           python_wheel_task:
             package_name: medallion
             entry_point: silver
-            parameters:
-              - --catalog=${var.catalog}
-              - --schema=${resources.schemas.silver.name}
-              - --bronze_schema=${resources.schemas.bronze.name}
-              - --max_reject_rate=${var.max_reject_rate}
+            parameters: *params
 
         - task_key: gold
           depends_on: [{ task_key: silver }]
@@ -47,7 +54,13 @@ resources:
           python_wheel_task:
             package_name: medallion
             entry_point: gold
-            parameters:
-              - --catalog=${var.catalog}
-              - --schema=${resources.schemas.gold.name}
-              - --silver_schema=${resources.schemas.silver.name}
+            parameters: *params
+
+        # Tags + row-level security, reapplied after every load (overwrites can drop them).
+        - task_key: governance
+          depends_on: [{ task_key: gold }]
+          environment_key: default
+          python_wheel_task:
+            package_name: medallion
+            entry_point: governance
+            parameters: *params

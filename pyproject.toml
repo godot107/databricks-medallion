@@ -14,6 +14,7 @@ dependencies = []
 bronze = "medallion.jobs:run_bronze"
 silver = "medallion.jobs:run_silver"
 gold = "medallion.jobs:run_gold"
+governance = "medallion.jobs:run_governance"
 
 [tool.setuptools.packages.find]
 where = ["src"]

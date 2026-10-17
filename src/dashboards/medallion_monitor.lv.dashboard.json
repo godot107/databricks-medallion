@@ -1,0 +1,544 @@
+{
+  "datasets": [
+    {
+      "name": "latest_run",
+      "displayName": "Latest run (per task)",
+      "queryLines": [
+        "SELECT task, status, rows_in, rows_out, rows_rejected, reject_rate, duration_s, started_at, message FROM pipeline_runs WHERE run_id = (SELECT run_id FROM pipeline_runs ORDER BY started_at DESC LIMIT 1) ORDER BY started_at"
+      ]
+    },
+    {
+      "name": "daily_health",
+      "displayName": "Daily health",
+      "queryLines": [
+        "SELECT DATE(started_at) AS run_date, task, SUM(rows_out) AS rows_out, MAX(reject_rate) AS reject_rate, ROUND(AVG(duration_s), 1) AS avg_duration_s, COUNT_IF(status = 'failed') AS failures FROM pipeline_runs GROUP BY ALL"
+      ]
+    },
+    {
+      "name": "gold_borough",
+      "displayName": "Gold: trips by borough (row-filtered)",
+      "queryLines": [
+        "SELECT pickup_date, pickup_borough, trips, revenue FROM v_gold_daily_borough"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "health",
+      "displayName": "Pipeline health",
+      "layout": [
+        {
+          "widget": {
+            "name": "title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Pipeline health",
+                "One row per task per run, written by the job itself to `ops.pipeline_runs`."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "failures_30d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_health",
+                  "fields": [
+                    {
+                      "name": "sum(failures)",
+                      "expression": "SUM(`failures`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(failures)",
+                  "displayName": "Failed tasks"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Failed tasks (all time)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "max_reject",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_health",
+                  "fields": [
+                    {
+                      "name": "max(reject_rate)",
+                      "expression": "MAX(`reject_rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "max(reject_rate)",
+                  "displayName": "Worst reject rate",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Worst silver reject rate"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 1,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "avg_duration",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_health",
+                  "fields": [
+                    {
+                      "name": "avg(avg_duration_s)",
+                      "expression": "AVG(`avg_duration_s`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(avg_duration_s)",
+                  "displayName": "Avg task seconds"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Average task duration (s)"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 1,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "latest_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "latest_run",
+                  "fields": [
+                    {
+                      "name": "task",
+                      "expression": "`task`"
+                    },
+                    {
+                      "name": "status",
+                      "expression": "`status`"
+                    },
+                    {
+                      "name": "rows_in",
+                      "expression": "`rows_in`"
+                    },
+                    {
+                      "name": "rows_out",
+                      "expression": "`rows_out`"
+                    },
+                    {
+                      "name": "rows_rejected",
+                      "expression": "`rows_rejected`"
+                    },
+                    {
+                      "name": "reject_rate",
+                      "expression": "`reject_rate`"
+                    },
+                    {
+                      "name": "duration_s",
+                      "expression": "`duration_s`"
+                    },
+                    {
+                      "name": "started_at",
+                      "expression": "`started_at`"
+                    },
+                    {
+                      "name": "message",
+                      "expression": "`message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "task",
+                    "displayName": "task"
+                  },
+                  {
+                    "fieldName": "status",
+                    "displayName": "status"
+                  },
+                  {
+                    "fieldName": "rows_in",
+                    "displayName": "rows_in"
+                  },
+                  {
+                    "fieldName": "rows_out",
+                    "displayName": "rows_out"
+                  },
+                  {
+                    "fieldName": "rows_rejected",
+                    "displayName": "rows_rejected"
+                  },
+                  {
+                    "fieldName": "reject_rate",
+                    "displayName": "reject_rate"
+                  },
+                  {
+                    "fieldName": "duration_s",
+                    "displayName": "duration_s"
+                  },
+                  {
+                    "fieldName": "started_at",
+                    "displayName": "started_at"
+                  },
+                  {
+                    "fieldName": "message",
+                    "displayName": "message"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Latest run"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "rows_by_day",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_health",
+                  "fields": [
+                    {
+                      "name": "run_date",
+                      "expression": "`run_date`"
+                    },
+                    {
+                      "name": "task",
+                      "expression": "`task`"
+                    },
+                    {
+                      "name": "sum(rows_out)",
+                      "expression": "SUM(`rows_out`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "run_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Run date"
+                },
+                "y": {
+                  "fieldName": "sum(rows_out)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Rows written"
+                },
+                "color": {
+                  "fieldName": "task",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Task"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Rows written per day, by task"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "reject_trend",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_health",
+                  "fields": [
+                    {
+                      "name": "run_date",
+                      "expression": "`run_date`"
+                    },
+                    {
+                      "name": "max(reject_rate)",
+                      "expression": "MAX(`reject_rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "run_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Run date"
+                },
+                "y": {
+                  "fieldName": "max(reject_rate)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Reject rate"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Silver reject rate over time (gate: 5%)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 8,
+            "width": 3,
+            "height": 6
+          }
+        }
+      ]
+    },
+    {
+      "name": "business",
+      "displayName": "Trips by borough",
+      "layout": [
+        {
+          "widget": {
+            "name": "title2",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Trips by borough",
+                "Reads gold through a row filter: you only see boroughs granted to you in `ops.rls_access`."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "revenue_trend",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "gold_borough",
+                  "fields": [
+                    {
+                      "name": "pickup_date",
+                      "expression": "`pickup_date`"
+                    },
+                    {
+                      "name": "pickup_borough",
+                      "expression": "`pickup_borough`"
+                    },
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "pickup_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Date"
+                },
+                "y": {
+                  "fieldName": "sum(revenue)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Revenue ($)"
+                },
+                "color": {
+                  "fieldName": "pickup_borough",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Borough"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily revenue by borough"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 4,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "trips_by_borough",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "gold_borough",
+                  "fields": [
+                    {
+                      "name": "pickup_borough",
+                      "expression": "`pickup_borough`"
+                    },
+                    {
+                      "name": "sum(trips)",
+                      "expression": "SUM(`trips`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "pickup_borough",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Borough"
+                },
+                "y": {
+                  "fieldName": "sum(trips)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Trips"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Trips by borough"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 1,
+            "width": 2,
+            "height": 6
+          }
+        }
+      ]
+    }
+  ]
+}
