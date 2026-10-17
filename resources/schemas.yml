@@ -1,0 +1,24 @@
+# Unity Catalog layout: one schema per medallion layer, plus a volume for raw files.
+# Deploying creates them; `databricks bundle destroy` removes them (and their tables).
+resources:
+  schemas:
+    bronze:
+      catalog_name: ${var.catalog}
+      name: bronze
+      comment: Raw rows as ingested, plus _ingested_at and _source. Replayable record.
+    silver:
+      catalog_name: ${var.catalog}
+      name: silver
+      comment: Validated, de-duplicated trips with derived fields; rejects kept beside them.
+    gold:
+      catalog_name: ${var.catalog}
+      name: gold
+      comment: Business-ready aggregates (daily trips and revenue per pickup ZIP).
+
+  volumes:
+    landing:
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.bronze.name}
+      name: landing
+      volume_type: MANAGED
+      comment: Drop zone for raw files (future Auto Loader ingestion).

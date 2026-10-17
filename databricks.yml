@@ -1,0 +1,39 @@
+# Declarative Automation Bundle (formerly Databricks Asset Bundles).
+# One file describes the workspace objects; `databricks bundle deploy -t <target>`
+# makes the workspace match it. Targets are environments.
+bundle:
+  name: databricks-medallion
+
+include:
+  - resources/*.yml
+
+artifacts:
+  medallion_wheel:
+    type: whl
+    path: .
+    build: python -m pip wheel . --no-deps -w dist
+
+variables:
+  catalog:
+    description: Unity Catalog catalog that holds the bronze/silver/gold schemas
+    default: workspace          # Free Edition's built-in catalog
+  source_table:
+    description: Raw input table read by bronze
+    default: samples.nyctaxi.trips
+  max_reject_rate:
+    description: Silver quality gate; the run fails above this share of bad rows
+    default: "0.05"
+
+targets:
+  # Your sandbox. Development mode prefixes every resource with
+  # "[dev <you>]" / "dev_<you>_" and pauses schedules, so it never clashes with prod.
+  dev:
+    mode: development
+    default: true
+
+  # The "real" pipeline, deployed only by GitHub Actions on merge to main.
+  # On Free Edition it shares the one workspace with dev; the names keep them apart.
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}

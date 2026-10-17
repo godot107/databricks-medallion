@@ -1,0 +1,37 @@
+# Merge to main -> deploy the prod target and run the job once as a smoke test.
+# Secrets live on the GitHub environment "prod" (Settings -> Environments):
+#   DATABRICKS_HOST   e.g. https://dbc-xxxxxxxx-xxxx.cloud.databricks.com
+#   DATABRICKS_TOKEN  a personal access token (Free Edition has no account console,
+#                     so no service principal OIDC federation; see README)
+name: deploy
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "notebooks/**"]
+  workflow_dispatch:
+    inputs:
+      run_job:
+        description: Run the job after deploying
+        type: boolean
+        default: true
+
+concurrency: deploy-prod      # never two deploys at once
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: databricks/setup-cli@v1.19.0
+      - run: databricks bundle validate -t prod
+      - run: databricks bundle deploy -t prod
+      - name: Smoke-run the job
+        if: github.event_name == 'push' || inputs.run_job
+        run: databricks bundle run -t prod medallion_daily

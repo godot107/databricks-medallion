@@ -1,0 +1,27 @@
+# Every push and PR: unit tests + offline bundle check. Needs no Databricks secrets.
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-java@v4      # local Spark for the unit tests
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q
+      - uses: databricks/setup-cli@v1.19.0
+      - name: Bundle schema check (offline)
+        run: |
+          databricks bundle schema > "$RUNNER_TEMP/bundle_schema.json"
+          python tools/check_bundle.py "$RUNNER_TEMP/bundle_schema.json"
+      - name: Build wheel
+        run: python -m pip wheel . --no-deps -w dist

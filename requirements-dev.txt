@@ -1,0 +1,7 @@
+# Local tests run Spark on this machine (needs Java 17+). Version tracks Databricks serverless.
+pyspark==3.5.5
+pytest>=8
+nbconvert>=7
+ipykernel>=6
+pyyaml>=6
+jsonschema>=4

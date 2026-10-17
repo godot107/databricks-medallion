@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medallion"
+version = "0.1.0"
+description = "Bronze -> silver -> gold over the Databricks NYC taxi sample"
+requires-python = ">=3.10"
+# pyspark is provided by the Databricks runtime; it is a dev-only dependency here.
+dependencies = []
+
+[project.scripts]
+bronze = "medallion.jobs:run_bronze"
+silver = "medallion.jobs:run_silver"
+gold = "medallion.jobs:run_gold"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
